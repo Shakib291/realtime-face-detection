@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Face Recognization Attendance System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Background container with blur effect */
+        .bg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        /* Blurred background image */
+        .bg-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: blur(8px);
+            transform: scale(1.1); /* Prevents edge artifacts */
+        }
+</style>
+
+  </head>
+ <body class="min-h-screen flex flex-col items-center justify-center">
+  <!-- Blurred background container -->
+    <div class="bg-container">
+        <img src="/auth-test-main/frontend/public/BGimage.jpg" class="bg-image" alt="Background">
+    </div>
+
+
+    <div class="bg-white shadow-lg rounded-lg w-full max-w-md p-6 mt-10">
+      <h1 class="text-2xl font-bold mb-4 text-center">Face Recognization Attendance System</h1>
+      <div class="flex justify-center mb-6">
+        <button
+          onclick="showSection('login')"
+          class="tab-btn px-4 py-2 mx-1 bg-blue-500 text-white rounded"
+        >
+          Login
+        </button>
+        <button
+          onclick="showSection('register')"
+          class="tab-btn px-4 py-2 mx-1 bg-gray-200 text-blue-700 rounded"
+        >
+          Register
+        </button>
+        <button
+          onclick="showSection('forgot')"
+          class="tab-btn px-4 py-2 mx-1 bg-gray-200 text-blue-700 rounded"
+        >
+          Forgot
+        </button>
+      </div>
+
+      <!-- Login Section -->
+      <form id="login-section" class="space-y-4" onsubmit="loginUser(event)">
+        <input
+          type="email"
+          id="login-email"
+          class="w-full px-3 py-2 border rounded"
+          placeholder="Email"
+          required
+        />
+        <input
+          type="password"
+          id="login-password"
+          class="w-full px-3 py-2 border rounded"
+          placeholder="Password"
+          required
+        />
+        <button class="w-full bg-blue-500 text-white py-2 rounded">
+          Login
+        </button>
+      </form>
+
+      <!-- Register Section -->
+      <form
+        id="register-section"
+        class="space-y-4 hidden"
+        onsubmit="registerUser(event)"
+      >
+        <input
+          type="email"
+          id="register-email"
+          class="w-full px-3 py-2 border rounded"
+          placeholder="Email"
+          required
+        />
+        <input
+          type="password"
+          id="register-password"
+          class="w-full px-3 py-2 border rounded"
+          placeholder="Password"
+          required
+        />
+        <button class="w-full bg-green-500 text-white py-2 rounded">
+          Register
+        </button>
+      </form>
+
+      <!-- Forgot Section -->
+      <form
+        id="forgot-section"
+        class="space-y-4 hidden"
+        onsubmit="forgotPassword(event)"
+      >
+        <input
+          type="email"
+          id="forgot-email"
+          class="w-full px-3 py-2 border rounded"
+          placeholder="Email"
+          required
+        />
+        <button class="w-full bg-yellow-500 text-white py-2 rounded">
+          Send Reset Link
+        </button>
+      </form>
+
+      <!-- Reset Password Section -->
+      <form
+        id="reset-section"
+        class="space-y-4 hidden"
+        onsubmit="resetPassword(event)"
+      >
+        <input
+          type="text"
+          id="reset-token"
+          class="w-full px-3 py-2 border rounded"
+          placeholder="Reset Token"
+          required
+        />
+        <input
+          type="password"
+          id="reset-new-password"
+          class="w-full px-3 py-2 border rounded"
+          placeholder="New Password"
+          required
+        />
+        <button class="w-full bg-purple-500 text-white py-2 rounded">
+          Reset Password
+        </button>
+      </form>
+
+      <div
+        id="success-msg"
+        class="mt-4 text-green-600 text-center hidden"
+      ></div>
+      <div id="error-msg" class="mt-4 text-red-600 text-center hidden"></div>
+      <div id="token-msg" class="mt-4 text-blue-700 text-center hidden"></div>
+
+      <div id="user-panel" class="mt-8 hidden">
+        <p class="text-center mb-4">Welcome, <span id="user-email"></span>!</p>
+        <button
+          onclick="logoutUser()"
+          class="w-full bg-red-500 text-white py-2 rounded"
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+
+    <script>
+      let userToken = null;
+
+      function showSection(section) {
+        document.getElementById("login-section").classList.add("hidden");
+        document.getElementById("register-section").classList.add("hidden");
+        document.getElementById("forgot-section").classList.add("hidden");
+        document.getElementById("reset-section").classList.add("hidden");
+        document.getElementById("success-msg").classList.add("hidden");
+        document.getElementById("error-msg").classList.add("hidden");
+        document.getElementById("token-msg").classList.add("hidden");
+        if (section === "login")
+          document.getElementById("login-section").classList.remove("hidden");
+        if (section === "register")
+          document
+            .getElementById("register-section")
+            .classList.remove("hidden");
+        if (section === "forgot")
+          document.getElementById("forgot-section").classList.remove("hidden");
+        if (section === "reset")
+          document.getElementById("reset-section").classList.remove("hidden");
+      }
+
+      async function registerUser(event) {
+        event.preventDefault();
+        clearMessages();
+        const email = document.getElementById("register-email").value;
+        const password = document.getElementById("register-password").value;
+        const res = await fetch("http://localhost:5000/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showSuccess(data.message || "Registered!");
+          showSection("login");
+        } else {
+          showError(data.message || "Registration failed");
+        }
+      }
+
+      async function loginUser(event) {
+        event.preventDefault();
+        clearMessages();
+        const email = document.getElementById("login-email").value;
+        const password = document.getElementById("login-password").value;
+        const res = await fetch("http://localhost:5000/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          userToken = data.token;
+          document.getElementById("user-panel").classList.remove("hidden");
+          document.getElementById("user-email").textContent = email;
+          hideForms();
+          showSuccess(data.message || "Logged in!");
+        } else {
+          showError(data.message || "Login failed");
+        }
+      }
+
+      async function forgotPassword(event) {
+        event.preventDefault();
+        clearMessages();
+        const email = document.getElementById("forgot-email").value;
+        const res = await fetch("http://localhost:5000/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        console.log("Forgot Password Response:", data);
+
+        if (res.ok) {
+          showToken(data.resetToken);
+          showSection("reset");
+        } else {
+          showError(data.message || "Failed to send reset link");
+        }
+      }
+
+      async function resetPassword(event) {
+        event.preventDefault();
+        clearMessages();
+        const token = document.getElementById("reset-token").value;
+        const newPassword = document.getElementById("reset-new-password").value;
+        const res = await fetch("http://localhost:5000/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, newPassword }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showSuccess(data.message || "Password reset!");
+          showSection("login");
+        } else {
+          showError(data.message || "Reset failed");
+        }
+      }
+
+      function logoutUser() {
+        userToken = null;
+        document.getElementById("user-panel").classList.add("hidden");
+        showSection("login");
+        showSuccess("Logged out!");
+      }
+
+      function hideForms() {
+        document.getElementById("login-section").classList.add("hidden");
+        document.getElementById("register-section").classList.add("hidden");
+        document.getElementById("forgot-section").classList.add("hidden");
+        document.getElementById("reset-section").classList.add("hidden");
+      }
+
+      function clearMessages() {
+        document.getElementById("success-msg").classList.add("hidden");
+        document.getElementById("error-msg").classList.add("hidden");
+        document.getElementById("token-msg").classList.add("hidden");
+      }
+
+      function showSuccess(msg) {
+        document.getElementById("success-msg").textContent = msg;
+        document.getElementById("success-msg").classList.remove("hidden");
+      }
+
+      function showError(msg) {
+        document.getElementById("error-msg").textContent = msg;
+        document.getElementById("error-msg").classList.remove("hidden");
+      }
+
+      function showToken(token) {
+        document.getElementById(
+          "token-msg"
+        ).innerHTML = `Reset token (for demo):<br><span class="font-mono break-all">${token}</span>`;
+        document.getElementById("token-msg").classList.remove("hidden");
+      }
+    </script>
+  </body>
+</html>
